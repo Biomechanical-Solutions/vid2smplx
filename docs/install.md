@@ -38,7 +38,8 @@ Result: `output/clip_talking_10pct/smplx_params.npz` + `render/final_incam.mp4`.
 
 ## Requirements
 
-- Linux (tested on Ubuntu 20.04 / 22.04); git; conda or [uv](https://docs.astral.sh/uv/).
+- Linux (tested on Ubuntu 20.04 / 22.04); git; conda or [uv](https://docs.astral.sh/uv/). On Windows,
+  run inside [WSL2](#windows-wsl2).
 - NVIDIA GPU, **8 GB minimum**, **~16 GB** past 12,526 frames (~8 min at 25 fps). Peak follows the
   *card*, not the clip — the stages size their batches from free VRAM. Tested on RTX PRO 1000 8 GB,
   RTX 8000, A100, H100. Numbers and basis: [benchmarks.md](benchmarks.md).
@@ -52,6 +53,47 @@ patch step. `install.sh` then runs `python3 -m vid2smplx.setup_submodules` (what
 runs): it *verifies* GVHMR carries the required changes and aborts loudly otherwise, because without
 the `--person` change a two-person clip would come back as a clean single-person SUCCESS. `doctor`
 prints a `patch:` row per required change.
+
+## Windows (WSL2)
+
+This repo is Linux-only; on Windows, run it inside WSL2 (Ubuntu 22.04).
+
+```powershell
+wsl --install -d Ubuntu-22.04     # PowerShell, as Administrator; reboot if prompted
+```
+
+GPU: install the NVIDIA driver on **Windows only** (R470+, Game Ready or Studio) — it exposes the
+GPU into WSL2 automatically. Do **not** install a Linux NVIDIA driver inside WSL. Verify with
+`nvidia-smi` from the Ubuntu shell once the Windows driver is in.
+
+`install.sh` builds `detectron2`/`mmcv` (ViTPose)/`chumpy` from source against `nvcc`, so the
+**CUDA 12.1 toolkit** (not just the driver) must be inside WSL, plus a host compiler:
+
+```bash
+# CUDA 12.1 toolkit for WSL (keyring installs the WSL-Ubuntu repo, no driver component)
+wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-keyring_1.1-1_all.deb
+sudo dpkg -i cuda-keyring_1.1-1_all.deb
+sudo apt update && sudo apt install -y cuda-toolkit-12-1 build-essential unzip git curl
+
+echo 'export PATH=/usr/local/cuda-12.1/bin:$PATH' >> ~/.bashrc
+echo 'export LD_LIBRARY_PATH=/usr/local/cuda-12.1/lib64:$LD_LIBRARY_PATH' >> ~/.bashrc
+echo 'export CUDA_HOME=/usr/local/cuda-12.1' >> ~/.bashrc
+source ~/.bashrc && nvcc --version   # expect release 12.1
+```
+
+Then install conda or [uv](https://docs.astral.sh/uv/) and follow [Install](#install) above as on
+any Linux box. Keep the clone inside the Linux filesystem (`~/vid2smplx`), not under `/mnt/c/...` —
+the latter is 9p-mounted and far slower for both the clone and the pipeline's own file I/O.
+
+WSL-specific gotchas:
+
+| Symptom | Fix |
+|---|---|
+| `nvidia-smi` not found / no GPU in WSL | Update the **Windows** driver, then `wsl --shutdown` and reopen |
+| `nvcc: command not found` | CUDA toolkit not on `PATH` — re-check the `~/.bashrc` exports above |
+| `detectron2`/`mmcv` build fails on GCC/arch mismatch | Confirm `CUDA_HOME=/usr/local/cuda-12.1` and `gcc --version` (12.x ships with Ubuntu 22.04 and is supported by CUDA 12.1) |
+| WSL disk (`ext4.vhdx`) balloons | `wsl --shutdown` then `diskpart` → `compact vdisk`, or move the distro off `C:` via `wsl --export`/`--import` |
+| Pipeline OOMs on host RAM, not VRAM | Raise `memory=` in `%UserProfile%\.wslconfig` under `[wsl2]`, then `wsl --shutdown` |
 
 ## Blackwell GPUs (RTX 50xx, RTX PRO, sm_120)
 

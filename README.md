@@ -77,7 +77,7 @@ Every step caches, so rerunning a clip resumes where it stopped. Full option lis
 
 ## Docs
 
-- [Install](docs/install.md) — conda or uv, Blackwell, troubleshooting, tests
+- [Install](docs/install.md) — conda or uv, Windows (WSL2), Blackwell, troubleshooting, tests
 - [Usage](docs/usage.md) — all flags, output tree, loading the npz
 - [Models](docs/models.md) — every weight file and which need registration
 - [Pipeline](docs/pipeline.md) — each step and the script that runs it
