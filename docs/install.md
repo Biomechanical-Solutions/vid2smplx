@@ -93,7 +93,32 @@ WSL-specific gotchas:
 | `nvcc: command not found` | CUDA toolkit not on `PATH` — re-check the `~/.bashrc` exports above |
 | `detectron2`/`mmcv` build fails on GCC/arch mismatch | Confirm `CUDA_HOME=/usr/local/cuda-12.1` and `gcc --version` (12.x ships with Ubuntu 22.04 and is supported by CUDA 12.1) |
 | WSL disk (`ext4.vhdx`) balloons | `wsl --shutdown` then `diskpart` → `compact vdisk`, or move the distro off `C:` via `wsl --export`/`--import` |
-| Pipeline OOMs on host RAM, not VRAM | Raise `memory=` in `%UserProfile%\.wslconfig` under `[wsl2]`, then `wsl --shutdown` |
+| Pipeline OOMs on host RAM, not VRAM | Raise WSL2's memory cap — see below |
+
+WSL2 defaults to half the host RAM, which OOM-kills the pipeline on host memory (not VRAM) even
+though `nvidia-smi` is fine. **8 GB was not enough**; 12 GB fixed it. From PowerShell:
+
+```powershell
+cd $env:UserProfile
+echo "[wsl2]" > .wslconfig
+echo "memory=12GB" >> .wslconfig
+echo "swap=32GB" >> .wslconfig
+```
+
+`.wslconfig` should now read:
+
+```
+[wsl2]
+memory=12GB
+swap=32GB
+```
+
+Then restart WSL for it to take effect:
+
+```powershell
+wsl --shutdown
+wsl
+```
 
 ## Blackwell GPUs (RTX 50xx, RTX PRO, sm_120)
 
